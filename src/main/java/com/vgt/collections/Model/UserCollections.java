@@ -14,7 +14,12 @@ import lombok.NoArgsConstructor;
 @Table(name = "user_collections")
 public class UserCollections {
 
-    @OneToOne(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "user_collections_id", nullable = false)
+    private String userCollectionsId;
+
+    @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "collection_id")
     private Collection collectionId;
 

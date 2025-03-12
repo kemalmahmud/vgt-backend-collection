@@ -6,6 +6,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -29,7 +31,7 @@ public class Collection {
     private Boolean mandatory;
 
     @OneToMany(mappedBy = "collectionId", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
-    private CollectionGames collectionGames;
+    private List<CollectionGames> collectionGames;
 
     @OneToOne(mappedBy = "collectionId", fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     private UserCollections userCollections;

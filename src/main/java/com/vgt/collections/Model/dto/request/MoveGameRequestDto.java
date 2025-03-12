@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RemoveGameRequestDto {
+public class MoveGameRequestDto {
     private String collectionGamesId;
+    private String newCollectionId;
 }
