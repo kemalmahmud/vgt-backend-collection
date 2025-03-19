@@ -1,6 +1,8 @@
 package com.vgt.collections.Service;
 
 import com.vgt.collections.Enum.InitialCollectionEnum;
+import com.vgt.collections.ErrorHandler.GameAlreadyExistException;
+import com.vgt.collections.ErrorHandler.NotFoundException;
 import com.vgt.collections.Model.Collection;
 import com.vgt.collections.Model.CollectionGames;
 import com.vgt.collections.Model.UserCollections;
@@ -9,6 +11,7 @@ import com.vgt.collections.Model.dto.response.*;
 import com.vgt.collections.Repository.CollectionGamesRepo;
 import com.vgt.collections.Repository.CollectionRepo;
 import com.vgt.collections.Repository.UserCollectionsRepo;
+import com.vgt.collections.Utils.Response;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -50,52 +53,39 @@ public class CollectionService {
 
     @Transactional
     public ResponseEntity<BaseResponse> newCollection(NewCollectionRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             // collection
             var newCol = createNewCollection(request.getName(), "", false);
             // user collection
             createNewUserCollections(request.getUserId(), newCol);
-            result.setData(CollectionResponseDto.builder().collectionId(newCol.getCollectionId()).build());
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success create new collection");
-            return ResponseEntity.ok(result);
+            return Response.success(CollectionResponseDto.builder().collectionId(newCol.getCollectionId()).build(), "Success create new collection");
         }
         catch (Exception e) {
             log.error("error in newCollection, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed create new collection");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     public ResponseEntity<BaseResponse> renameCollection(RenameCollectionRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             var col = collectionRepo.findById(request.getCollectionId()).orElse(null);
             if(col != null) {
                 col.setCollectionName(request.getNewName());
                 collectionRepo.save(col);
-                result.setData(CollectionResponseDto.builder().collectionId(col.getCollectionId()).build());
-                result.setStatus(HttpStatus.OK.value());
-                result.setMessage("Success rename collection");
-                return ResponseEntity.ok(result);
-            } else throw new Exception("Collection not found");
+                return Response.success(CollectionResponseDto.builder().collectionId(col.getCollectionId()).build(), "Success rename collection");
+            } else throw new NotFoundException("Collection not found", "renameCollection");
         }
         catch (Exception e) {
             log.error("error in renameCollection, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed rename collection");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     public ResponseEntity<BaseResponse> moveGame(MoveGameRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             // remove the old one
             var oldCollectionGames = collectionGamesRepo.findById(request.getCollectionGamesId()).orElse(null);
-            if(oldCollectionGames == null) throw new Exception("Games not found in this collection");
+            if(oldCollectionGames == null) throw new NotFoundException("Games not found in this collection", "moveGame");
             removeGameFromCollection(oldCollectionGames.getCollectionGamesId());
 
             // add to new one
@@ -107,44 +97,34 @@ public class CollectionService {
                     .gameName(oldCollectionGames.getGameName()).build();
 
             var newGame = addGameToCollection(newReq);
-            result.setData(newGame);
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success move game");
-            return ResponseEntity.ok(result);
+            return Response.success(newGame, "Success move game");
         }
         catch (Exception e) {
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed move game");
-            return ResponseEntity.badRequest().body(result);
+            log.error("error in moveGame, " + e.getMessage());
+            throw e;
         }
     }
 
     public ResponseEntity<BaseResponse> addGame(AddGameRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             var newGame = addGameToCollection(request);
-            result.setData(newGame);
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success add game");
-            return ResponseEntity.ok(result);
+            return Response.success(newGame, "Success add game");
         }
         catch (Exception e) {
             log.error("error in addGame, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed add game");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     @Transactional
-    public AddGameResponseDto addGameToCollection(AddGameRequestDto request) throws Exception {
+    public AddGameResponseDto addGameToCollection(AddGameRequestDto request) {
         try {
             var col = collectionRepo.findById(request.getCollectionId()).orElse(null);
-            if(col == null) throw new Exception("Collection not found");
+            if(col == null) throw new NotFoundException("Collection not found", "addGameToCollection");
 
             // cek apakah gamenya sudah ada
             var cg = collectionGamesRepo.findByGameId(request.getGameId(), request.getCollectionId()).orElse(null);
-            if(cg != null) throw new Exception("Already exist in collection");
+            if(cg != null) throw new GameAlreadyExistException("addGameToCollection");
 
             var colGames = CollectionGames.builder()
                     .gameId(request.getGameId())
@@ -164,27 +144,21 @@ public class CollectionService {
     }
 
     public ResponseEntity<BaseResponse> removeGame(RemoveGameRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             removeGameFromCollection(request.getCollectionGamesId());
-            result.setData(null);
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success remove game");
-            return ResponseEntity.ok(result);
+            return Response.success(null, "Success remove game");
         }
         catch (Exception e) {
             log.error("error in removeGame, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed remove game");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     @Transactional
-    public void removeGameFromCollection(String colGamesId) throws Exception {
+    public void removeGameFromCollection(String colGamesId){
         try {
             var colGame = collectionGamesRepo.findById(colGamesId).orElse(null);
-            if(colGame == null) throw new Exception("Collection game not found");
+            if(colGame == null) throw new NotFoundException("Collection game not found", "removeGameFromCollection");
             colGame.setIsDeleted(true);
             collectionGamesRepo.save(colGame);
         }
@@ -225,7 +199,6 @@ public class CollectionService {
     }
 
     public ResponseEntity<BaseResponse> getDetailCollection(DetailCollectionRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             var col = collectionRepo.findById(request.getCollectionId()).orElse(null);
             if(col != null) {
@@ -244,48 +217,35 @@ public class CollectionService {
                         .collectionId(col.getCollectionId())
                         .collectionName(col.getCollectionName())
                         .games(games).build();
-                result.setData(allGamesInCol);
-                result.setStatus(HttpStatus.OK.value());
-                result.setMessage("Success get collection detail");
-                return ResponseEntity.ok(result);
+                return Response.success(allGamesInCol, "Success get collection detail");
             }
-            else throw new Exception("Collection not found");
+            else throw new NotFoundException("Collection not found", "getDetailCollection");
         }
         catch(Exception e) {
             log.error("error in getDetailCollection, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed get detail collection");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     public ResponseEntity<BaseResponse> getUserCollections(UserCollectionsRequestDto request) {
-        BaseResponse result = new BaseResponse();
         try {
             var collections = userCollectionsRepo.findByUserId(request.getUserId());
             List<CollectionDetailDto> details = new ArrayList<>();
-            collections.stream().forEach( c -> {
-                details.add(CollectionDetailDto.builder()
-                        .userCollectionsId(c.getUserCollectionsId())
-                        .collectionId(c.getCollectionId().getCollectionId())
-                        .collectionName(c.getCollectionId().getCollectionName())
-                        .thumbnail(c.getCollectionId().getThumbnail()).build());
-            });
+            collections.forEach(c -> details.add(CollectionDetailDto.builder()
+                    .userCollectionsId(c.getUserCollectionsId())
+                    .collectionId(c.getCollectionId().getCollectionId())
+                    .collectionName(c.getCollectionId().getCollectionName())
+                    .thumbnail(c.getCollectionId().getThumbnail()).build()));
 
             var data = UserCollectionsResponseDto.builder()
                     .userId(request.getUserId())
                     .collections(details)
                     .build();
-            result.setData(data);
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success get user collections");
-            return ResponseEntity.ok(result);
+            return Response.success(data, "Success get user collections");
         }
         catch(Exception e) {
             log.error("error in getUserCollections, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed get user collections");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 }

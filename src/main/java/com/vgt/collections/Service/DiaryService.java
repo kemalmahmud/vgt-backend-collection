@@ -1,6 +1,7 @@
 package com.vgt.collections.Service;
 
 import com.google.type.DateTime;
+import com.vgt.collections.ErrorHandler.NotFoundException;
 import com.vgt.collections.Model.UserDiaries;
 import com.vgt.collections.Model.UserDiaryDetail;
 import com.vgt.collections.Model.dto.request.*;
@@ -8,6 +9,7 @@ import com.vgt.collections.Model.dto.response.*;
 import com.vgt.collections.Repository.UserCollectionsRepo;
 import com.vgt.collections.Repository.UserDiariesRepo;
 import com.vgt.collections.Repository.UserDiaryDetailRepo;
+import com.vgt.collections.Utils.Response;
 import jakarta.transaction.Transactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +37,6 @@ public class DiaryService {
 
     // get games and progress in now playing collection
     public ResponseEntity<BaseResponse> getNowPlaying(GetNowPlayingRequest request) {
-        BaseResponse result = new BaseResponse();
         try {
             var games = userCollectionsRepo.findNowPlaying(request.getUserId());
             List<GetNowPlayingResponse> resp = new ArrayList<>();
@@ -64,24 +65,17 @@ public class DiaryService {
                                 .text(text)
                         .build());
             });
-
-            result.setData(resp);
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success get now playing");
-            return ResponseEntity.ok(result);
+            return Response.success(resp, "Success get now playing");
         }
         catch(Exception e) {
             log.error("error in getNowPlaying, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed to get data");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     // save diary record progress
     @Transactional
     public ResponseEntity<BaseResponse> saveDiary(SaveDiaryRequest request) {
-        BaseResponse result = new BaseResponse();
         try {
             // cek apakah diary nya sudah ada
             var diary = userDiariesRepo.findByUserIdAndGameId(request.getUserId(), request.getGameId()).orElse(null);
@@ -103,42 +97,31 @@ public class DiaryService {
                     .recordedTime(LocalDateTime.now()).build();
             userDiaryDetailRepo.save(newRecord);
 
-            result.setData(SaveDiaryResponse.builder()
-                    .diaryId(diary.getDiaryId()).build());
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success create new collection");
-            return ResponseEntity.ok(result);
+            return Response.success(SaveDiaryResponse.builder()
+                    .diaryId(diary.getDiaryId()).build(), "Success create new collection");
         }
         catch(Exception e) {
             log.error("error in saveDiary, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed to save diary");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     // update diary record progress
     public ResponseEntity<BaseResponse> updateDiaryRecord(UpdateDiaryRequest request) {
-        BaseResponse result = new BaseResponse();
         try {
             var diaryRecord = userDiaryDetailRepo.findById(request.getDiaryDetailId()).orElse(null);
-            if(diaryRecord == null) throw  new Exception("Diary record not found");
+            if(diaryRecord == null) throw  new NotFoundException("Diary record not found", "updateDiaryRecord");
             diaryRecord.setMinutesPlayed(request.getMinutesPlayed());
             diaryRecord.setHoursPlayed(request.getHoursPlayed());
             diaryRecord.setDiaryText(request.getText());
             userDiaryDetailRepo.save(diaryRecord);
 
-            result.setData(SaveDiaryResponse.builder()
-                    .diaryId(diaryRecord.getUserDiaries().getDiaryId()).build());
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success create new collection");
-            return ResponseEntity.ok(result);
+            return Response.success(SaveDiaryResponse.builder()
+                    .diaryId(diaryRecord.getUserDiaries().getDiaryId()).build(), "Success create new collection");
         }
         catch(Exception e) {
             log.error("error in updateDiaryRecord, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed to update diary");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
@@ -149,34 +132,29 @@ public class DiaryService {
             var diaries = userDiariesRepo.findByUserId(request.getUserId());
             GetAllDiaryResponse resp = new GetAllDiaryResponse();
             resp.setUserId(request.getUserId());
-            List<GetAllDiaryResponse.AllDiaryData> datas = new ArrayList<>();
+            List<DiaryDataResponse> datas = new ArrayList<>();
             diaries.forEach(x -> {
-                datas.add(GetAllDiaryResponse.AllDiaryData.builder()
+                datas.add(DiaryDataResponse.builder()
                         .gameId(x.getGameId())
                         .diaryId(x.getDiaryId())
                         .diaryName(x.getDiaryName()).build());
 
             });
             resp.setDiaries(datas);
-            result.setData(resp);
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success get all diaries");
-            return ResponseEntity.ok(result);
+
+            return Response.success(resp, "Success get all diaries");
         }
         catch(Exception e) {
             log.error("error in getAllUserDiaries, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed to get diaries");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 
     // get diary detail from 1 game
     public ResponseEntity<BaseResponse> getDiaryDetail(GetDiaryDetailRequest request) {
-        BaseResponse result = new BaseResponse();
         try {
             var diary = userDiariesRepo.findById(request.getDiaryId()).orElse(null);
-            if(diary == null) throw new Exception("Diary not found");
+            if(diary == null) throw new NotFoundException("Diary not found", "getDiaryDetail");
             List<DiaryEntriesResponse> entries = new ArrayList<>();
             diary.getDiaryDetails().forEach(x -> {
                 entries.add(DiaryEntriesResponse.builder()
@@ -188,20 +166,16 @@ public class DiaryService {
                         .build());
             });
 
-            result.setData(GetDiaryDetailResponse.builder()
+            var result = GetDiaryDetailResponse.builder()
                     .diaryId(request.getDiaryId())
                     .diaryName(diary.getDiaryName())
                     .gameId(diary.getGameId())
-                    .entries(entries).build());
-            result.setStatus(HttpStatus.OK.value());
-            result.setMessage("Success get diary detail");
-            return ResponseEntity.ok(result);
+                    .entries(entries).build();
+            return Response.success(result, "Success get diary detail");
         }
         catch(Exception e) {
             log.error("error in getDiaryDetail, " + e.getMessage());
-            result.setStatus(HttpStatus.BAD_REQUEST.value());
-            result.setMessage("Failed to get diary detail");
-            return ResponseEntity.badRequest().body(result);
+            throw e;
         }
     }
 }

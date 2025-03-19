@@ -5,13 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Builder
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class GetAllDiaryResponse {
-    private String userId;
-    private List<DiaryDataResponse> diaries;
+public class DiaryDataResponse {
+    private Integer gameId;
+    private String diaryId;
+    private String diaryName;
 }
