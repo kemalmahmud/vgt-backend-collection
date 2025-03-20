@@ -8,7 +8,7 @@ public class Response {
     public static ResponseEntity<BaseResponse> success(Object data, String message) {
         BaseResponse res = new BaseResponse();
         res.setStatus(HttpStatus.OK.value());
-        res.setMessage("success");
+        res.setMessage(message);
         res.setData(data);
         return ResponseEntity.ok(res);
     }

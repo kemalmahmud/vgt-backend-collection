@@ -35,7 +35,7 @@ public class CollectionService {
     private CollectionGamesRepo collectionGamesRepo;
 
     //create initial collection for new user using kafka
-//    @KafkaListener(topics = "initial-collection-topic", groupId = "collection-service-group")
+    @KafkaListener(topics = "initial-collection-topic", groupId = "collection-service-group")
     @Transactional
     public void createInitialCollections(String userId) {
         try {
