@@ -23,4 +23,28 @@ public class DiaryController {
     public ResponseEntity<BaseResponse> nowPlaying(@RequestBody GetNowPlayingRequest request) {
         return diaryService.getNowPlaying(request);
     }
+
+    // get all diary from user
+    @PostMapping("/all")
+    public ResponseEntity<BaseResponse> getAllDiaries(@RequestBody GetAllDiaryRequest request) {
+        return diaryService.getAllUserDiaries(request);
+    }
+
+    // get detail diary
+    @PostMapping("/detail")
+    public ResponseEntity<BaseResponse> getDiaryDetail(@RequestBody GetDiaryDetailRequest request) {
+        return diaryService.getDiaryDetail(request);
+    }
+
+    // save diary
+    @PostMapping("/save")
+    public ResponseEntity<BaseResponse> saveDiaryProgress(@RequestBody SaveDiaryRequest request) {
+        return diaryService.saveDiary(request);
+    }
+
+    // update diary
+    @PostMapping("/update")
+    public ResponseEntity<BaseResponse> updateDiaryProgress(@RequestBody UpdateDiaryRequest request) {
+        return diaryService.updateDiaryRecord(request);
+    }
 }
